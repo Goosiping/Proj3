@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <time.h>
+#include <queue>
 #include "../include/algorithm.h"
 
 using namespace std;
@@ -29,6 +30,10 @@ int minimax(Player player, int num[5][6], char col[5][6], int depth, bool FindMi
 void copyBoard(Board board, int num[5][6], char col[5][6]);
 char Winner(char col[5][6]);
 void ccBoard(int[5][6], char[5][6], int[5][6], char[5][6]);
+bool check_explode(int[5][6], queue<int>&, queue<int>&);
+
+int limit[5][6];
+
 
 void algorithm_A(Board board, Player player, int index[]){
 
@@ -40,6 +45,25 @@ void algorithm_A(Board board, Player player, int index[]){
     int bestScore = __INT_MAX__;
     int score;
 
+    //set critical value
+    for(int i = 0; i < 5; i++){
+        for(int j = 0; j < 6; j++){
+            limit[i][j] = 8;
+        }
+    }
+    for(int i = 0; i < 5; i++){
+        limit[i][0] = 5;
+        limit[i][5] = 5;
+    }
+    for(int i = 0; i < 6; i++){
+        limit[0][i] = 5;
+        limit[4][i] = 5;
+    }
+    limit[0][0] = 3;
+    limit[0][5] = 3;
+    limit[4][0] = 3;
+    limit[4][6] = 3;
+
     for(int i = 0; i < 5; i++){
         for(int j = 0; j < 6; j++){
             //Is the cell available?
@@ -47,7 +71,7 @@ void algorithm_A(Board board, Player player, int index[]){
                 copyBoard(board, num_board, col_board);
                 num_board[i][j] += 1;
                 col_board[i][j] = player.get_color();
-                score = minimax(player, num_board, col_board, 10, true);  
+                score = minimax(player, num_board, col_board, 5, true);  
                 if(score < bestScore){
                     bestScore = score;
                     row = i;
@@ -74,12 +98,68 @@ void copyBoard(Board board, int num[5][6], char col[5][6]){
 int minimax(Player player, int num[5][6], char col[5][6], int depth, bool FindMin){
     
     //deal with new board
-    int limit[5][6];
-    for(int i = 0; i < 5; i++){
-        for(int j = 0; j < 6; j++){
-            limit[i][j] = 8;
+    queue<int> boomRow;
+    queue<int> boomCul;
+    while(check_explode(num, boomRow, boomCul)){
+        while(!boomRow.empty()){
+            char color;
+            int i = boomRow.front();
+            int j = boomCul.front();
+
+            if(FindMin){
+                color = player.get_color();
+            }
+            else{
+                if(player.get_color() == 'r'){
+                    color = 'b';
+                }
+                else{
+                    color = 'r';
+                }
+            }
+
+            num[i][j] -= limit[i][j];
+            if(num[i][j] == 0) col[i][j] = 'w';
+            
+            if( i + 1 < 5){
+                num[i + 1][j] += 1;
+                col[i + 1][j] = color;
+            }
+            if( j + 1 < 6){
+                num[i][j + 1] += 1;
+                col[i][j + 1] = color;
+            }
+            if( i - 1 >= 0){
+                num[i - 1][j] += 1;
+                col[i - 1][j] = color;
+            }
+            if( j - 1 >= 0){
+                num[i][j - 1] += 1;
+                col[i][j - 1] = color;
+            }
+            if( i + 1 < 5 && j - 1 >= 0){
+                num[i + 1][j - 1] += 1;
+                col[i + 1][j - 1] = color;
+            }
+            if( i - 1 >= 0 && j - 1 >= 0){
+                num[i - 1][j - 1] += 1;
+                col[i - 1][j - 1] = color;
+            }
+            if( i + 1 < 5 && j + 1 < 6){
+                num[i + 1][j + 1] += 1;
+                col[i + 1][j + 1] = color;
+            }
+            if( i - 1 >= 0 && j + 1 < 6){
+                num[i - 1][j + 1] += 1;
+                col[i - 1][j + 1] = color;
+            }
+
+            boomRow.pop();
+            boomCul.pop();
         }
     }
+    
+    
     
 
     //if there is a winner
@@ -130,6 +210,32 @@ int minimax(Player player, int num[5][6], char col[5][6], int depth, bool FindMi
         }
         return bestScore;
     }
+    else{
+        int score;
+        int bestScore = -__INT_MAX__;
+        char color;
+
+        if(player.get_color() == 'r'){
+            color = 'b';
+        }
+        else{
+            color = 'r';
+        }
+
+        for(int i = 0; i < 5; i++){
+            for(int j = 0; j < 6; j++){
+                if(col[i][j] == 'w' || col[i][j] == color){
+                    int new_num[5][6];
+                    char new_col[5][6];
+                    ccBoard(num, col, new_num, new_col);
+                    new_num[i][j] += 1;
+                    new_col[i][j] = color;
+                    score = minimax(player, num, col, depth - 1, true);
+                    bestScore = max(score, bestScore); 
+                }
+            }
+        }
+    }
 
     return 0;
 }
@@ -158,4 +264,18 @@ void ccBoard(int num[5][6], char col[5][6], int c_num[5][6], char c_col[5][6]){
             c_col[i][j] = col[i][j];
         }
     }
+}
+
+bool check_explode(int num[5][6], queue<int> &row, queue<int> &cul){
+    bool v = false;
+    for(int i = 0; i < 5; i++){
+        for(int j = 0; j < 6; j++){
+            if(num[i][j] >= limit[i][j]){
+                row.push(i);
+                cul.push(j);
+                v = true;
+            }
+        }
+    }
+    return v;
 }
