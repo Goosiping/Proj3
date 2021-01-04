@@ -28,10 +28,10 @@ using namespace std;
 //g++ chain_reaction.cpp board.cpp rules.cpp player.cpp algorithm_ST.cpp algorithm_TA.cpp
 
 
-int minimax(Player player, Board cboard, int depth, bool FindMax, int alpha, int beta, int pos[2]);
+int minimax(Player player, Board cboard, int depth, bool FindMax, int alpha, int beta, int *row, int *col);
 char Winner(Board);
 char player_me, player_enemy;
-int pos[2];
+int DEPTH = 5;
 
 void algorithm_A(Board board, Player player, int index[]){
 
@@ -40,6 +40,7 @@ void algorithm_A(Board board, Player player, int index[]){
     int bestScore = -__INT_MAX__;
     int score;
     Board cboard = board;
+    int row, col;
 
     //define player
     player_me = player.get_color();
@@ -49,42 +50,22 @@ void algorithm_A(Board board, Player player, int index[]){
     else{
         player_enemy = 'r';
     }
-    /*failed minimax
-    for(int i = 0; i < 5; i++){
-        for(int j = 0; j < 6; j++){
-            //Is the cell available?
-            if(cboard.place_orb(i, j, &player)){
-                score = minimax(player, cboard, 3, false);
-                if(score > bestScore){
-                    bestScore = score;
-                    row = i;
-                    col = j;
-                }
-            }
-        }
-    }
 
-    index[0] = row;
-    index[1] = col;
-    */
-   minimax(player, board, 3, true, -__INT_MAX__, __INT_MAX__, pos);
-   index[0] = pos[0];
-   index[1] = pos[1];
+   minimax(player, board, DEPTH, true, -__INT_MAX__, __INT_MAX__, &row, &col);
+   index[0] = row;
+   index[1] = col;
 }
 
-int minimax(Player player, Board cboard, int depth, bool FindMax, int alpha, int beta, int pos[2]){
+int minimax(Player player, Board cboard, int depth, bool FindMax, int alpha, int beta, int *row, int *col){
     
     //if there is a winner
     char winner = Winner(cboard);
     if(winner != '~'){
-        cout<<"! ! ! ! ! ! ! ! ! ! Warning ! ! ! ! ! ! ! ! ! !"<<endl;
         if(winner == player_me){
-            cout<<"! ! ! ! ! ! ! ! ! ! Winning ! ! ! ! ! ! ! ! ! !"<<endl;
             return -__INT_MAX__;
         }
         else
         {
-            cout<<"! ! ! ! ! ! ! ! ! ! Warning ! ! ! ! ! ! ! ! ! !"<<endl;
             return __INT_MAX__;
         }
         
@@ -99,7 +80,7 @@ int minimax(Player player, Board cboard, int depth, bool FindMax, int alpha, int
                     sum = sum + cboard.get_orbs_num(i, j);
                 }
                 else if(cboard.get_cell_color(i, j) == player_enemy){
-                    //sum = sum - cboard.get_orbs_num(i, j);
+                    sum = sum - cboard.get_orbs_num(i, j);
                 }
             }
         }
@@ -116,10 +97,10 @@ int minimax(Player player, Board cboard, int depth, bool FindMax, int alpha, int
         for(int i = 0; i < 5; i++){
             for(int j = 0; j < 6; j++){
                 if(cboard.place_orb(i, j, &player)){
-                    score = minimax(player, cboard, depth - 1, false, alpha, beta, pos);
-                    if(bestScore < score && depth == 0){
-                        pos[0] = i;
-                        pos[1] = j;
+                    score = minimax(player, cboard, depth - 1, false, alpha, beta, row, col);
+                    if(bestScore < score && depth == DEPTH){
+                        *row = i;
+                        *col = j;
                     }
                     bestScore = max(bestScore, score);
                     alpha = max(alpha, bestScore);
@@ -144,7 +125,7 @@ int minimax(Player player, Board cboard, int depth, bool FindMax, int alpha, int
         for(int i = 0; i < 5; i++){
             for(int j = 0; j < 6; j++){
                 if(cboard.place_orb(i, j, &enemy)){
-                    score = minimax(player, cboard, depth - 1, true, alpha, beta, pos);
+                    score = minimax(player, cboard, depth - 1, true, alpha, beta, row, col);
                     bestScore = min(score, bestScore); 
                     beta = min(beta, bestScore);
                     cboard = tboard;
